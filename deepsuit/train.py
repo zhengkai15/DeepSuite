@@ -2,7 +2,7 @@ import os
 import torch
 import torch.optim as optim
 from .config import save_yaml
-from .utils import logger
+from loguru import logger
 
 
 # Setup optimizer and learning rate scheduler

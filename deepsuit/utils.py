@@ -1,11 +1,8 @@
 import os
 import sys
-from loguru import logger
 from datetime import datetime, timedelta
-
-# 获取当前子模块的日志记录器
-# logger = logging.getLogger(__name__)  # 名称自动是 'module.submodule1'
 from loguru import logger
+
 
 def time_me(func):
     '''
@@ -22,7 +19,7 @@ def time_me(func):
     return wrapper
 
 
-def create_logger(write_to_file=True):
+def create_logger(log_level="INFO", log_path=None):
     """
     创建日志记录器，支持控制是否写入文件。
 
@@ -36,21 +33,17 @@ def create_logger(write_to_file=True):
     logger.remove()
     
     # 配置控制台日志
-    logger.add(sys.stderr, level="INFO", format="{time:YYYY-MM-DD HH:mm:ss} - {level}: {message}")
+    logger.add(sys.stderr, level=log_level, format="{time:YYYY-MM-DD HH:mm:ss} - {level}: {message}")
     
     # 配置文件日志（可选）
-    if write_to_file:
+    if log_path is not None:
         now = (datetime.now() + timedelta(hours=8)).strftime("%Y%m%d_%H-%M-%S")
-        script_path = os.path.abspath(__file__)
-        script_dir = os.path.dirname(script_path)
-        log_file = f'{script_dir}/../logs/log_statistic_{now}.log'
-        
+        # script_path = os.path.abspath(__file__)
+        # script_dir = os.path.dirname(script_path)
+        # log_file = f'{script_dir}/log_statistic_{now}.log'
+        log_file = os.path.join(log_path, f"logs/log_statistic_{now}.log")        
         # 创建日志文件目录
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        
         # 添加日志文件记录器
         logger.add(log_file, rotation="10 MB", level="INFO", format="{time:YYYY-MM-DD HH:mm:ss} - {level}: {message}")
-    
     return logger
-
-logger = create_logger(write_to_file=False)

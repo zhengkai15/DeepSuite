@@ -1,5 +1,6 @@
-from .utils import logger
 import torch.nn as nn
+from loguru import logger
+
 
 def get_loss(config):
     loss_name = config["loss"]["name"]

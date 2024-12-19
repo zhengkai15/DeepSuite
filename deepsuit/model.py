@@ -1,4 +1,6 @@
 import torch 
+from loguru import logger
+
 
 def get_model(config):
     if config["model"]["name"] == "unet":

@@ -5,8 +5,7 @@ import yaml
 import numpy as np
 import torch
 import argparse
-from .utils import logger
-
+from loguru import logger
 
 def get_color_codes():
     BG_RED = '\033[41m'
@@ -15,8 +14,6 @@ def get_color_codes():
     BG_BLUE = '\033[44m'
     BG_RESET = '\033[49m'  # 重置背景颜色
     return BG_RED, BG_GREEN, BG_YELLOW, BG_BLUE, BG_RESET
-
-BG_RED, BG_GREEN, BG_YELLOW, BG_BLUE, BG_RESET = get_color_codes()
 
 
 def parse_args():
