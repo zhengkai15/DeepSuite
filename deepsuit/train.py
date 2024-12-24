@@ -257,8 +257,8 @@ def eval_epoches(
             if config["debug"]["verbose"]:
                 break     
         
-        # 更新当前epoch的指标 !TODO: ts50 通用化:第一位置是info, 指标放到最后一个位置,具体的指标可以基于info选择
-        task_metric_ls = res_epoch[-1][res_epoch[0][-1]]
+        # 更新当前epoch的指标, res_epoch的最后一个位置
+        task_metric_ls = res_epoch[-1]
         metric = np.nanmean(loss_epoch)
         losses_valid.append(metric)
         task_metric = np.nanmean(task_metric_ls)
