@@ -7,15 +7,6 @@ import torch
 import argparse
 from loguru import logger
 
-def get_color_codes():
-    BG_RED = '\033[41m'
-    BG_GREEN = '\033[42m'
-    BG_YELLOW = '\033[43m'
-    BG_BLUE = '\033[44m'
-    BG_RESET = '\033[49m'  # 重置背景颜色
-    return BG_RED, BG_GREEN, BG_YELLOW, BG_BLUE, BG_RESET
-
-
 def parse_args():
     """Parse command line arguments for model training configuration."""
     parser = argparse.ArgumentParser(
@@ -78,6 +69,19 @@ def update_config_from_args(config, args):
 
     print_config(config)
     return config
+
+def save_yaml(config):
+    # 保存配置到 config.yaml 文件
+    save_dir = config["exp"]["dir"]
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, "config.yaml")
+    try:
+        with open(save_path, "w") as file:
+            yaml.dump(config, file, default_flow_style=False, sort_keys=False)
+    except Exception as e:
+        logger.error(f"Failed to save config file: {e}")
+        raise
+    return 
 
 
 def set_random_seed(seed: int):

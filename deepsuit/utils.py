@@ -47,3 +47,27 @@ def create_logger(log_level="INFO", log_path=None):
         # 添加日志文件记录器
         logger.add(log_file, rotation="10 MB", level="INFO", format="{time:YYYY-MM-DD HH:mm:ss} - {level}: {message}")
     return logger
+
+
+def get_color_codes():
+    BG_RED = '\033[41m'
+    BG_GREEN = '\033[42m'
+    BG_YELLOW = '\033[43m'
+    BG_BLUE = '\033[44m'
+    BG_RESET = '\033[49m'  # 重置背景颜色
+    return BG_RED, BG_GREEN, BG_YELLOW, BG_BLUE, BG_RESET
+
+
+def print_variable_info(variable_dict):
+    BG_RED, BG_GREEN, BG_YELLOW, BG_BLUE, BG_RESET = get_color_codes()
+    
+    logger.info(f"{10*'%'} echo {10*'%'}")
+    for var_name, var in variable_dict.items():
+        device = str(var.device) if hasattr(var, 'device') else 'CPU'
+        if hasattr(var, 'shape'):
+            contents = str(var.shape)
+            logger.info(f"{BG_GREEN} Variable Name: {var_name:<15}, Shape    : {contents:<50}, Device: {device:<15} {BG_RESET}")
+        else:
+            contents = str(var)
+            logger.info(f"{BG_GREEN} Variable Name: {var_name:<15}, Conetents: {contents:<50}, Device: {device:<15} {BG_RESET}")
+            
