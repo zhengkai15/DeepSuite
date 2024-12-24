@@ -14,7 +14,7 @@ WORK_DIR=${COMMON}/${FLAG}
 cd "$WORK_DIR"
 
 # config
-CONFIG=${COMMON}/${FLAG}/conf/config.ymal
+CONFIG=${COMMON}/${FLAG}/conf/config.yaml
 MODE=train
 # Experiment directory
 EXP_DIR_ROOT=${COMMON}/${FLAG}/aexp
