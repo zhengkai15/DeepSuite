@@ -165,6 +165,7 @@ def save_eval_metrics(lrs, losses_valid, task_metrics, exp, flag):
 @time_me
 def train_epoches(model, 
     train_loader, 
+    sample_num,
     loss_func, 
     optimizer, 
     epoch, 
@@ -176,7 +177,8 @@ def train_epoches(model,
     model.cuda()
     model.train()
     
-    with tqdm(total=train_loader.__len__(), desc=f'trainning epoch:{epoch}') as pbar:
+    # with tqdm(total=train_loader.__len__(), desc=f'trainning epoch:{epoch}') as pbar:
+    with tqdm(total=sample_num, desc=f'trainning epoch:{epoch}') as pbar:
         last_update_time = time.time()  # 记录上次更新时间
         for index, (ft_item, gt_item, _) in enumerate(train_loader):
             ft_item,gt_item = ft_item.cuda().float(), gt_item.cuda().float()
@@ -193,17 +195,20 @@ def train_epoches(model,
                 print_variable_info({"ft_item":ft_item, "gt_item":gt_item, "output_item":output_item})
             
             # calculate loss
-            loss = loss_func(output_item, gt_item, log1p_target=config["data"]["log_transform"])
+            loss = loss_func(output_item, gt_item)
             
             loss_epoch.append(loss.item())
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             
+            if index >= sample_num:
+                break
+            
             # update qtdm
             last_update_time = update_tqdm(total_num=len(train_loader), index=index, pbar=pbar, last_update_time=last_update_time, update_type='by_time')
 
-            if config["debug"]["verbose"]:
+            if config["debug"]["verbose"] and index == 9:
                 break
             
     save_model(model, config["exp"]["dir"], epoch)
@@ -254,7 +259,7 @@ def eval_epoches(
             # 更新进度条
             last_update_time = update_tqdm(total_num=len(eval_loader), index=index, pbar=pbar, last_update_time=last_update_time, update_type='by_time')
 
-            if config["debug"]["verbose"]:
+            if config["debug"]["verbose"]  and index == 9:
                 break     
         
         # 更新当前epoch的指标, res_epoch的最后一个位置
