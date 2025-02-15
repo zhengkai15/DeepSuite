@@ -336,3 +336,58 @@ def plot_metrics(exp_path):
     plt.tight_layout()
     plt.savefig(f'{exp_path}/metrics.png')
     plt.close()
+    
+    
+@time_me
+def train_epoches_autoreg(model, 
+    train_loader, 
+    sample_num,
+    loss_func, 
+    optimizer, 
+    epoch, 
+    losses, 
+    lrs, 
+    config, funcs=None):
+    ft_gt_process, train_result_process = funcs
+    loss_epoch = []
+    model.cuda()
+    model.train()
+    
+    # with tqdm(total=train_loader.__len__(), desc=f'trainning epoch:{epoch}') as pbar:
+    with tqdm(total=sample_num, desc=f'trainning epoch:{epoch}') as pbar:
+        last_update_time = time.time()  # 记录上次更新时间
+        for index, (ft_item, gt_item, _) in enumerate(train_loader):
+            ft_item,gt_item = ft_item.cuda().float(), gt_item.cuda().float()
+            # input gt process 
+            ft_item, gt_item = ft_gt_process(ft_item, gt_item, config)
+            
+            
+            baseline, output_item = model(ft_item)
+            
+            # pred process
+            output_item = train_result_process(output_item)
+            
+            if config["debug"]["verbose"]:
+                print_variable_info({"ft_item":ft_item, "gt_item":gt_item, "output_item":output_item})
+            
+            # calculate loss
+            loss = loss_func(output_item, gt_item)
+            
+            loss_epoch.append(loss.item())
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            
+            if index >= sample_num:
+                break
+            
+            # update qtdm
+            last_update_time = update_tqdm(total_num=len(train_loader), index=index, pbar=pbar, last_update_time=last_update_time, update_type='by_time')
+
+            if config["debug"]["verbose"] and index == 9:
+                break
+            
+    save_model(model, config["exp"]["dir"], epoch)
+    save_train_metrics(loss_epoch, config["exp"]["dir"], optimizer, lrs, losses)
+    
+    return losses, lrs

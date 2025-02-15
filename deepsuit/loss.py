@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from loguru import logger
+import math
 
 
 class weighted_mae(nn.Module):
@@ -303,8 +304,17 @@ class BalancedL1Loss_fix(torch.nn.Module):
         super(BalancedL1Loss_fix, self).__init__()
         logger.info(f'thresholds:{config["loss"]["thresholds"]}')
         bins = config["loss"]["thresholds"]
-        bins = [i/80 for i in bins]
-        logger.info(f"fixed thresholds:{bins}")
+        thresholds_mapping_param = config["loss"]["thresholds_mapping_param"]
+        if config["data"]["log_transform"] and config["data"]["min_max_transform"]:
+            raise ValueError("log_transform and min_max_transform cannot both be true")
+        elif config["data"]["log_transform"]:
+            bins = [math.log(x + 1) for x in bins]
+            logger.info(f"log_transform fixed thresholds:{bins}")
+        elif config["data"]["min_max_transform"]:
+            bins = [i/thresholds_mapping_param for i in bins]
+            logger.info(f"min_max_transform fixed thresholds:{bins}")
+        else:
+            logger.info(f"no transform to thresholds:{bins}")
         bins = list(zip(bins[:-1], bins[1:]))
         self.bins = np.array(bins, dtype=np.float32)
         self.gamma = gamma
