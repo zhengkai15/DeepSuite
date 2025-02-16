@@ -249,8 +249,10 @@ def eval_epoches(
                 print_variable_info({"ft_item":ft_item, "gt_item":gt_item, "output_item":output_item})
                 
             # ************** 测评开始 ***************
-            data, loss_epoch = infer_result_process(output_item, gt_item, baseline, config, loss_func, loss_epoch)
-            res_epoch = cal_target_metric(res_epoch, data)
+            for b_i in range(config["infer"]["batch_size"]):
+                output_item_i, gt_item_i, baseline_i = output_item[b_i:b_i+1], gt_item[b_i:b_i+1], baseline[b_i:b_i+1]
+                data, loss_epoch = infer_result_process(output_item_i, gt_item_i, baseline_i, config, loss_func, loss_epoch)
+                res_epoch = cal_target_metric(res_epoch, data)
             # ************** 测评结束 ***************
 
             if index >= sample_num:

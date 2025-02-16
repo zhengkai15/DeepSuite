@@ -151,12 +151,12 @@ class LabelBasedWeightedRegressionLoss(nn.Module):
         return loss
 
 
-def reverse_to_dbz(x):
-    max_rad = 80.0  # max dbz
-    x = x * max_rad
+def reverse_to_dbz(x, config):
+    thresholds_mapping_param = config["loss"]["thresholds_mapping_param"]
+    x = x * thresholds_mapping_param
     return x
     
-
+'''
 class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
 
     def __init__(self,config):
@@ -167,7 +167,7 @@ class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
             self.loss_fn = nn.L1Loss(reduction='none')
         else:
             self.loss_fn = nn.MSELoss(reduction='none')
-        self.weights = config["loss"]["weights"]
+        self.config = config
 
     def forward(self, pred, label):
         """
@@ -182,15 +182,15 @@ class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
         """
         assert pred.shape == label.shape, "Prediction and label must have the same shape"
 
-        w_c1, w_c2, w_c3, w_c4, w_c5, w_c6 = self.weights
+        w_c1, w_c2, w_c3, w_c4, w_c5, w_c6, w_c7 = self.config["loss"]["weights"]
 
         error = self.loss_fn(pred, label)
 
         weights = torch.ones_like(label)
         weights = weights.to(dtype=error.dtype, device=error.device)
 
-        label = reverse_to_dbz(label)
-        pred = reverse_to_dbz(pred)
+        label = reverse_to_dbz(label, self.config)
+        pred = reverse_to_dbz(pred, self.config)
 
         non_zero_elements = (label != 0.0).sum()
         if non_zero_elements == 0:
@@ -198,10 +198,11 @@ class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
 
         condition1 = label <= 1.
         condition2 = (label >= 1.) & (label < 10.)
-        condition3 = (label >= 10.) & (label < 30.)
-        condition4 = (label >= 30.) & (label < 40.)
-        condition5 = (label >= 40.) & (label < 50.)
-        condition6 = (label >= 50.)
+        condition3 = (label >= 10.) & (label < 20.)
+        condition4 = (label >= 20.) & (label < 30.)
+        condition5 = (label >= 30.) & (label < 40.)
+        condition6 = (label >= 40.) & (label < 50.)
+        condition7 = (label >= 50.)
 
         weights = torch.where(
             condition1,
@@ -227,6 +228,12 @@ class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
             condition6,
             torch.tensor(w_c6, dtype=error.dtype, device=error.device),
             weights)
+        
+        weights = torch.where(
+            condition7,
+            torch.tensor(w_c7, dtype=error.dtype, device=error.device),
+            weights)
+        
         weighted_error = error * weights
 
         if self.nonzero_mean:
@@ -234,6 +241,58 @@ class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
         else:
             loss = weighted_error.mean()
         return loss
+'''
+    
+class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.use_mae = config["loss"]["use_mae"]
+        self.nonzero_mean = config["loss"]["nonzero_mean"]
+        self.loss_fn = nn.L1Loss(reduction='none') if self.use_mae else nn.MSELoss(reduction='none')
+        self.config = config
+        
+    def gen_weights(self, label):
+        thresholds = self.config["loss"]["thresholds"]
+        weights = self.config["loss"]["weights"]
+        # weight的个数需要大于thresholds的个数
+        assert len(thresholds)+1 == len(weights), "thresholds length equals to weight lenght plus 1"
+    
+        # thresholds个阈值
+        conditions = []
+        for i in range(len(thresholds)):
+            if i == 0:
+                conditions.append(label <= thresholds[i])
+            else:
+                conditions.append((label > thresholds[i-1]) & (label <= thresholds[i]))
+        conditions.append(label > thresholds[-1])
+        return conditions
+        
+    def forward(self, pred, label):
+        assert pred.shape == label.shape, "Prediction and label must have the same shape"
+        
+        # ae
+        error = self.loss_fn(pred, label)
+        
+        # 数据处理
+        label = reverse_to_dbz(label, self.config)
+        pred = reverse_to_dbz(pred, self.config)
+        non_zero_elements = (label != 0.0).sum()
+        
+        if non_zero_elements == 0:
+            return error.mean()
+        
+        # 生成condition
+        conditions = self.gen_weights(label)
+        
+        # 生成weight
+        stacked_conditions = torch.stack(conditions)
+        weights = torch.tensor(self.config["loss"]["weights"], dtype=error.dtype, device=error.device)
+        weights = weights.view(len(weights), *([1] * (len(stacked_conditions.shape) - 1))).expand_as(stacked_conditions)
+        weights = torch.where(stacked_conditions, weights, torch.ones_like(label, dtype=error.dtype, device=error.device))
+        weighted_error = error * weights
+        loss = weighted_error.sum() / non_zero_elements if self.nonzero_mean else weighted_error.mean()
+        return loss
+    
 
 import torch.nn.functional as F
 class mae_plus_mse(nn.Module):
@@ -359,7 +418,26 @@ class mse_loss(torch.nn.Module):
         loss = F.mse_loss(outputs, targets, reduction='mean')
         return loss
 
-
+class BMAELoss(nn.Module):
+    def __init__(self, reduction='mean'):
+        super(BMAELoss, self).__init__()
+        self.reduction = 'mean'
+        self.config = config
+        self.thresholds = self.config["loss"]["thresholds"]
+        self.weights = self.config["loss"]["weights"]
+        assert len(thresholds)+1 == len(weight), "thresholds length equals to weight lenght plus 1"
+        self.b_dict = {self.thresholds[i]: self.weights[i+1] for i in range(len(self.thresholds))}
+        
+    def get_weight(self, y):
+        w = torch.ones_like(y) * self.weight[0]
+        for k in sorted(self.b_dict.keys()):
+            w[y >= k] = self.b_dict[k]
+        return w 
+        
+    def forward(self, outputs, targets):
+        assert outputs.shape == targets.shape, "Prediction and label must have the same shape"
+        w = torch.sqrt(self.get_weight(targets))
+        return F.l1_loss(w * outputs, w * targets, reduction=self.reduction)
 
 def get_loss(config):
     loss_name = config["loss"]["name"]
