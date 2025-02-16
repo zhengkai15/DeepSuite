@@ -292,7 +292,7 @@ class LabelBasedWeightedRegressionLoss_yx_nowcasting(nn.Module):
         weighted_error = error * weights
         loss = weighted_error.sum() / non_zero_elements if self.nonzero_mean else weighted_error.mean()
         return loss
-    
+
 
 import torch.nn.functional as F
 class mae_plus_mse(nn.Module):
