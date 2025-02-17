@@ -65,7 +65,7 @@ def get_model(config):
             "out_times_num":config["model"]["out_times_num"],
             "w":config["data"]["fig_w"],
             "h":config["data"]["fig_h"],
-            "residual":False
+            "residual":config["model"]["residual"]
             }
         model = Model(config=params)
         if best_model_path is not None:

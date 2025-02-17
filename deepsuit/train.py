@@ -210,8 +210,8 @@ def train_epoches(model,
 
             if config["debug"]["verbose"] and index == 9:
                 break
-            
-    save_model(model, config["exp"]["dir"], epoch)
+    if config["train"]["save_epoch_model"]:
+        save_model(model, config["exp"]["dir"], epoch)
     save_train_metrics(loss_epoch, config["exp"]["dir"], optimizer, lrs, losses)
     
     return losses, lrs
