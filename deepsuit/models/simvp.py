@@ -27,7 +27,7 @@ class BasicConv2d(nn.Module):
                 stride=stride, padding=padding, dilation=dilation)
 
         self.norm = nn.GroupNorm(2, out_channels)
-        self.act = nn.SiLU(inplace=act_inplace)
+        self.act = nn.LeakyReLU(inplace=act_inplace)
 
         self.apply(self._init_weights)
 
@@ -218,8 +218,7 @@ class MidIncepNet(nn.Module):
 
         y = z.reshape(B, T, C, H, W)
         return y
-
-
+    
 class SimVP(nn.Module):
     r"""SimVP Model
 
@@ -258,8 +257,7 @@ class SimVP(nn.Module):
         self.loss_func = loss_func
 
     def forward(self, x_raw, **kwargs):
-        base_line = x_raw[:, -1:, :, ...]
-        base_line = base_line.repeat(1, self.C_out, 1, 1, 1)  # 初始场作为训练时候的baseline
+        base_line = x_raw[:, -1:, :, ...].clone()
         B, T, C, H, W = x_raw.shape
         x = x_raw.reshape(B*T, C, H, W)
 
@@ -282,18 +280,6 @@ class SimVP(nn.Module):
 
         return base_line, Y
     
-    def predict(self, frames_in, frames_gt=None, compute_loss=False, **kwargs):
-        frames_pred = []
-        cur_seq = frames_in.clone()
-        frames_pred = self.forward(cur_seq)
-        
-        if compute_loss:
-            loss = self.loss_func(frames_pred, frames_gt)
-        else:
-            loss = None
-            
-        return frames_pred, loss
-    
 if __name__ == "__main__":
     config = {
     "hid_S" : 64,
@@ -310,9 +296,9 @@ if __name__ == "__main__":
     "h":256,
     "residual":False
     }
-    model = SimVP(config=config).to('cuda')
-    frames_in = torch.randn(2, 10, 1, 308, 256).to('cuda')
-    frames_gt = torch.randn(2, 1, 1, 308, 256).to('cuda')
+    model = SimVP(config=config)#.to('cuda')
+    frames_in = torch.randn(2, 10, 1, 308, 256)# .to('cuda')
+    frames_gt = torch.randn(2, 1, 1, 308, 256)#.to('cuda')
     
     baseline, frames_pred = model(frames_in)
     print(frames_pred.shape)
