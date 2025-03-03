@@ -75,8 +75,24 @@ def get_model(config):
         from .models.unet import Model
         # model = TemporalModel(ModelConfig(), configs=config)
         pass
+    elif config["model"]["name"] == "smaat_unet_sais2025":
+        from .models.smaAt_unet_sais2025 import SmaAt_UNet as Model
+        best_model_path = config["exp"]["best_model_path"]
+        in_varibale_num = config["model"]["in_varibale_num"]
+        in_times_num = config["model"]["in_times_num"]
+        out_varibale_num = config["model"]["out_varibale_num"]
+        out_time_num = config["model"]["out_times_num"]
+        input_size = in_times_num * in_varibale_num
+        output_size = out_time_num * out_varibale_num
+        params = {'in_channels': input_size,
+                'out_channels': output_size}
+        model = Model(params=params)
+        if best_model_path is not None:
+            logger.info(f"best_model loaded:{best_model_path}")
+            model.load_state_dict(torch.load(best_model_path))  
     else:
         raise ValueError("Unsupported model name.")
+    logger.info(f'{config["model"]["name"]}')
     return model
 
 

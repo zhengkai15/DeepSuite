@@ -439,6 +439,26 @@ class BMAELoss(nn.Module):
         w = torch.sqrt(self.get_weight(targets))
         return F.l1_loss(w * outputs, w * targets, reduction=self.reduction)
 
+
+class LatWeightedRMSELoss(nn.Module):
+    def __init__(self, config):
+        super(LatWeightedRMSELoss, self).__init__()
+        # 使用 torch.arange 生成纬度数组
+        lat = torch.arange(90, -91, -1, dtype=torch.float32)
+        # 计算权重
+        self.weights = torch.cos(torch.deg2rad(torch.abs(lat))).view(-1, 1)
+
+    def forward(self, pred, tgt):
+        assert pred.shape == tgt.shape, "Prediction and label must have the same shape"
+        # 计算预测值和真实值之间的平方误差
+        ano_rmse = torch.square(pred - tgt)
+        # 应用纬度权重
+        weights = self.weights.to(dtype=ano_rmse.dtype, device=ano_rmse.device)
+        error = ano_rmse * weights
+        # 计算平均误差并取平方根
+        return torch.sqrt(torch.mean(error))
+    
+    
 def get_loss(config):
     loss_name = config["loss"]["name"]
     """Get loss function based on loss name.
@@ -486,6 +506,8 @@ def get_loss(config):
     elif loss_name == "mse_loss":
         loss_func = mse_loss(config)
         
+    elif loss_name == "LatWeightedRMSELoss":
+        loss_func = LatWeightedRMSELoss(config)
     else:
         raise ValueError(f"Unknown loss function: {loss_name}")
         
