@@ -34,7 +34,7 @@ class SmaAt_UNet(nn.Module):
         B, S, C, W, H = tuple(x.shape)
         base_line = x.clone()
         base_line = base_line[:, -1:, :, ...]
-        base_line = base_line.repeat(1, self.n_classes, 1, 1, 1)  # 初始场作为训练时候的baseline
+        # base_line = base_line.repeat(1, self.n_classes, 1, 1, 1)  # 初始场作为训练时候的baseline
         x = x.reshape(B, -1, W, H)
         x1 = self.inc(x)
         x1Att = self.cbam1(x1)
